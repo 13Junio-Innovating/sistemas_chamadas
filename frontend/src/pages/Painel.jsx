@@ -80,8 +80,25 @@ export default function Painel() {
 
   const anunciarSenha = (s) => {
     if (!audioEnabled) return;
-    const tipoLabel = s.tipo === "preferencial" ? "Preferencial" : "Normal";
-    const numFmt = (s.tipo === "preferencial" ? "P" : "N") + String(s.numero).padStart(3, "0");
+    const tipoLabel = (() => {
+      switch (s.tipo) {
+        case "preferencial": return "Preferencial";
+        case "proprietario": return "Proprietário";
+        case "check-in": return "Check-in";
+        case "check-out": return "Check-out";
+        default: return "Normal";
+      }
+    })();
+    const prefixo = (() => {
+      switch (s.tipo) {
+        case "preferencial": return "P";
+        case "proprietario": return "PR";
+        case "check-in": return "CI";
+        case "check-out": return "CO";
+        default: return "N";
+      }
+    })();
+    const numFmt = prefixo + String(s.numero).padStart(3, "0");
     const guiche = s.guiche || "Guichê 1";
     const text = `Atenção: senha ${tipoLabel} ${numFmt}. Dirija-se ao ${guiche}.`;
     try {
@@ -104,7 +121,22 @@ export default function Painel() {
       } else {
         speak();
       }
-    } catch {}
+    } catch {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(880, ctx.currentTime);
+        g.gain.setValueAtTime(0.001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.start();
+        o.stop(ctx.currentTime + 0.45);
+      } catch {}
+    }
   };
 
   useEffect(() => { carregar(); const t=setInterval(carregar,3000); return ()=>clearInterval(t); }, []);
@@ -134,7 +166,18 @@ export default function Painel() {
     return () => { try { window.onYouTubeIframeAPIReady = null; } catch {} };
   }, []);
 
-  const numero = (s) => (s.tipo==="preferencial"?"P":"N")+String(s.numero).padStart(3,"0");
+  const numero = (s) => {
+  const prefixo = (() => {
+    switch (s.tipo) {
+      case "preferencial": return "P";
+      case "proprietario": return "PR";
+      case "check-in": return "CI";
+      case "check-out": return "CO";
+      default: return "N";
+    }
+  })();
+  return prefixo + String(s.numero).padStart(3, "0");
+};
   const hora = (d) => d ? new Date(d).toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"}) : "-";
 
   return (
@@ -160,6 +203,7 @@ export default function Painel() {
               >
                 <span className="inline-block w-2 h-2 rounded-full" style={{backgroundColor: audioEnabled ? '#22c55e' : '#64748b'}}></span>
               </button>
+              <span className="ml-2 text-sm text-slate-300">Áudio: {audioEnabled ? 'Ativo' : 'Desativado'}</span>
             </div>
           </div>
 
@@ -168,9 +212,17 @@ export default function Painel() {
             {chamando.length ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6 overflow-auto pr-2">
                 {chamando.slice(0,6).map((s) => (
-                  <div key={s._id} className={`p-6 rounded-2xl shadow-2xl bg-gradient-to-br ${s.tipo==="preferencial"?"from-amber-400 to-orange-500":"from-blue-400 to-cyan-500"}`}>
+                  <div key={s._id} className={`p-6 rounded-2xl shadow-2xl bg-gradient-to-br ${s.tipo==="preferencial"?"from-amber-400 to-orange-500": s.tipo==="proprietario"?"from-purple-400 to-pink-500": s.tipo==="check-in"?"from-green-400 to-emerald-500": s.tipo==="check-out"?"from-red-400 to-rose-500":"from-blue-400 to-cyan-500"}`}>
                     <div className="text-5xl font-bold">{numero(s)}</div>
-                    <div className="text-base opacity-90">{s.tipo==="preferencial"?"Preferencial":"Normal"}</div>
+                    <div className="text-base opacity-90">{(() => {
+                      switch (s.tipo) {
+                        case "preferencial": return "Preferencial";
+                        case "proprietario": return "Proprietário";
+                        case "check-in": return "Check-in";
+                        case "check-out": return "Check-out";
+                        default: return "Normal";
+                      }
+                    })()}</div>
                     <div className="text-xl font-semibold mt-3 mb-1">{s.guiche || "Guichê 1"}</div>
                     <div className="opacity-90">{hora(s.hora_chamada)}</div>
                   </div>
