@@ -1,0 +1,20 @@
+sistema-chamados/
+│── backend/
+│   ├── src/
+│   │   ├── models/
+│   │   │   └── Chamado.ts
+│   │   ├── routes/
+│   │   │   └── chamadoRoutes.ts
+│   │   ├── controllers/
+│   │   │   └── chamadoController.ts
+│   │   ├── server.ts
+│   ├── package.json
+│
+│── frontend/
+│   ├── src/
+│   │   ├── pages/
+│   │   │   └── Chamados.tsx
+│   │   ├── components/
+│   │   │   └── ChamadoForm.tsx
+│   │   └── App.tsx
+│   ├── package.json
