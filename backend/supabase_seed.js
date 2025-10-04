@@ -15,6 +15,7 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const modeVerify = process.argv.includes('--verify');
 
 async function ensureUser(email, password, metadata) {
   const { data, error } = await supabase.auth.admin.createUser({
@@ -35,7 +36,51 @@ async function ensureUser(email, password, metadata) {
   return data?.user ?? null;
 }
 
+async function verifyUsers() {
+  const expectedEmails = [
+    'admin@costao.com',
+    ...Array.from({ length: 10 }, (_, i) => `guiche${i + 1}@costao.com`),
+  ];
+
+  const found = new Set();
+  let page = 1;
+  const perPage = 100;
+
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const users = data?.users || [];
+
+    for (const u of users) {
+      if (u?.email && expectedEmails.includes(u.email)) {
+        found.add(u.email);
+      }
+    }
+
+    if (users.length < perPage) break;
+    page++;
+  }
+
+  const present = expectedEmails.filter((e) => found.has(e));
+  const missing = expectedEmails.filter((e) => !found.has(e));
+
+  console.log('Usuários presentes:', present);
+  console.log('Usuários faltando:', missing);
+
+  if (missing.length === 0) {
+    console.log('✅ Todos os usuários esperados estão presentes no Supabase.');
+  } else {
+    console.log(`⚠️ Faltam ${missing.length} usuários esperados no Supabase.`);
+    console.log('Dica: execute "npm run seed:supabase" para criar os usuários ausentes.');
+  }
+}
+
 async function main() {
+  if (modeVerify) {
+    await verifyUsers();
+    return;
+  }
+
   // Admin
   await ensureUser('admin@costao.com', 'admin@123', { name: 'Administrador', role: 'admin' });
 
